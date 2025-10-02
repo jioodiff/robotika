@@ -33,14 +33,14 @@ Tekan dan tahan tombol arah untuk menggerakkan mobil. Lepaskan tombol untuk berh
 
 Gunakan slider untuk mengatur kecepatan mobil sesuai keinginan.
 https://github.com/user-attachments/assets/80005e7f-f7b2-4e95-92f5-bd939ed89c89
-## Koneksi L9110S
+## Koneksi L298N
 
 Jika menggunakan driver motor L9110S (dengan pin A-1A/A-1B dan B-1A/B-1B), hubungkan sebagai berikut:
 
 ### Diagram Koneksi
 ESP32 → L9110S Motor Driver
 
-| ESP32 GPIO | L9110S Pin | Fungsi |
+| ESP32 GPIO | L298N Pin | Fungsi |
 |------------|------------|--------|
 | 26         | A-1A       | Motor kiri - kontrol arah 1 |
 | 27         | A-1B       | Motor kiri - kontrol arah 2 |
