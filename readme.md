@@ -10,6 +10,10 @@ Upload sketch program yang telah disediakan ke board ESP32 menggunakan Arduino I
 
 ### 2. Power Supply
 
+
+https://github.com/user-attachments/assets/80005e7f-f7b2-4e95-92f5-bd939ed89c89
+
+
 Nyalakan driver dan motor dengan baterai/power pack terpisah. Pastikan untuk menyatukan GND dengan ESP32.
 
 **Peringatan:** Jangan menghubungkan sumber daya motor langsung ke ESP32 karena dapat menyebabkan kerusakan akibat beda tegangan.
