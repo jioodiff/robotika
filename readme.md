@@ -10,10 +10,6 @@ Upload sketch program yang telah disediakan ke board ESP32 menggunakan Arduino I
 
 ### 2. Power Supply
 
-
-https://github.com/user-attachments/assets/80005e7f-f7b2-4e95-92f5-bd939ed89c89
-
-
 Nyalakan driver dan motor dengan baterai/power pack terpisah. Pastikan untuk menyatukan GND dengan ESP32.
 
 **Peringatan:** Jangan menghubungkan sumber daya motor langsung ke ESP32 karena dapat menyebabkan kerusakan akibat beda tegangan.
@@ -22,8 +18,8 @@ Nyalakan driver dan motor dengan baterai/power pack terpisah. Pastikan untuk men
 
 Dari ponsel atau laptop, sambungkan ke jaringan Wi-Fi yang dipancarkan ESP32:
 
-- SSID: **ESP32-Car**
-- Password: **12345678**
+- SSID: **KelompokGila**
+- Password: **Kelompok11**
 
 ### 4. Akses Kontrol Web
 
@@ -36,7 +32,7 @@ Halaman kontrol akan muncul dengan antarmuka yang mudah digunakan.
 Tekan dan tahan tombol arah untuk menggerakkan mobil. Lepaskan tombol untuk berhenti.
 
 Gunakan slider untuk mengatur kecepatan mobil sesuai keinginan.
-
+https://github.com/user-attachments/assets/80005e7f-f7b2-4e95-92f5-bd939ed89c89
 ## Koneksi L9110S
 
 Jika menggunakan driver motor L9110S (dengan pin A-1A/A-1B dan B-1A/B-1B), hubungkan sebagai berikut:
