@@ -32,7 +32,11 @@ Halaman kontrol akan muncul dengan antarmuka yang mudah digunakan.
 Tekan dan tahan tombol arah untuk menggerakkan mobil. Lepaskan tombol untuk berhenti.
 
 Gunakan slider untuk mengatur kecepatan mobil sesuai keinginan.
-https://github.com/user-attachments/assets/80005e7f-f7b2-4e95-92f5-bd939ed89c89
+
+
+https://github.com/user-attachments/assets/e36cc69f-630b-48b4-92de-fc542b0d18e4
+
+
 ## Koneksi L298N
 
 Jika menggunakan driver motor L9110S (dengan pin A-1A/A-1B dan B-1A/B-1B), hubungkan sebagai berikut:
