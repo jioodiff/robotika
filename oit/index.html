@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Face Recognition Multi (5+) + Wemos</title>
+<title>Face Recognition + Wemos Multi Face</title>
 <style>
 :root{--bg:#0f1720;--panel:#0b1220;--text:#e6eef6;--muted:#8fa4bf;--btn:#2b6cb0;--btn2:#334155;--border:#1b2b48}
 *{box-sizing:border-box}
@@ -18,12 +18,12 @@ button.secondary{background:var(--btn2)}
 </head>
 <body>
 <div class="card">
-<h2>Face Recognition — Multi Face (5+) + Wemos API</h2>
+<h2>Face Recognition + Wemos API (Multi Face)</h2>
 <select id="camera"></select>
 <button id="start" disabled>Start</button>
 <button id="stop" class="secondary" disabled>Stop</button>
-<label><input type="checkbox" id="showVideo"> preview video</label>
-<p class="muted" id="status">Status: memuat OpenCV (WASM)…</p>
+<label><input type="checkbox" id="showVideo"> tampilkan video</label>
+<p class="muted" id="status">Status: memuat OpenCV…</p>
 <video id="video" playsinline autoplay muted></video>
 <canvas id="canvas" width="640" height="480"></canvas>
 </div>
@@ -77,12 +77,12 @@ async function callLED(state){
 let lastTrigger=0;
 async function triggerOnVerified(){const now=Date.now();if(now-lastTrigger<2000)return;lastTrigger=now;await callLED('on');setTimeout(()=>callLED('off'),5000);}
 
-// === Loop (multi face) ===
+// === LOOP utama ===
 function startLoop(){
  rgba&&rgba.delete();gray&&gray.delete();
  rgba=new cv.Mat(canvas.height,canvas.width,cv.CV_8UC4);gray=new cv.Mat();
  const faces=new cv.RectVector();
- const db=loadDB();const thr=0.9;
+ const db=loadDB();const threshold=0.9;
  const step=()=>{
   if(!running){rgba.delete();gray.delete();faces.delete();return;}
   if(video.readyState>=2){
@@ -97,29 +97,37 @@ function startLoop(){
     facesCount=faces.size();
    }
 
-   // draw all faces
-   for(let i=0;i<Math.min(faces.size(),10);i++){
-    const r=faces.get(i);
-    const roi=gray.roi(r),res=new cv.Mat();
-    cv.resize(roi,res,new cv.Size(LBP_SIZE,LBP_SIZE),0,0,cv.INTER_AREA);
-    const desc=lbpHistFromBytes(res.data,res.cols,res.rows);
-    const match=bestMatch(desc,db);
-    const isVerified=match.score>=thr;
-    const text=isVerified?`${match.name} (${match.score.toFixed(2)})`:`Unknown (${match.score.toFixed(2)})`;
-    ctx.lineWidth=Math.max(2,Math.round(canvas.width/200));
-    ctx.shadowColor=isVerified?'#00ff66':'#66a3ff';
-    ctx.shadowBlur=8;
-    ctx.strokeStyle=isVerified?'#00ff66':'#66a3ff';
-    ctx.strokeRect(r.x,r.y,r.width,r.height);
-    ctx.fillStyle='rgba(0,0,0,0.5)';
-    const w=ctx.measureText(text).width+14;
-    ctx.fillRect(r.x,r.y-22,w,20);
-    ctx.fillStyle='#fff';
-    ctx.fillText(text,r.x+7,r.y-7);
-    ctx.shadowBlur=0;
-    roi.delete();res.delete();
+   // 🔽 Tambahan: Loop semua wajah (multi-face)
+   for (let i = 0; i < faces.size(); i++) {
+      const r = faces.get(i);
 
-    if(isVerified)i===0&&triggerOnVerified(); // hanya trigger sekali
+      const roi = gray.roi(r);
+      const resized = new cv.Mat();
+      cv.resize(roi, resized, new cv.Size(LBP_SIZE, LBP_SIZE), 0, 0, cv.INTER_AREA);
+
+      const desc = lbpHistFromBytes(resized.data, resized.cols, resized.rows);
+      const match = bestMatch(desc, db);
+      const isVerified = match.score >= threshold;
+
+      const label = isVerified ? `${match.name} (${match.score.toFixed(2)})` : `Unknown (${match.score.toFixed(2)})`;
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isVerified ? '#00ff66' : '#ff6666';
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(r.x, r.y - 20, ctx.measureText(label).width + 10, 18);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, r.x + 5, r.y - 7);
+
+      // Trigger LED jika ada wajah terverifikasi
+      if (isVerified && Date.now() - lastTrigger > 2000) {
+        lastTrigger = Date.now();
+        callLED('on');
+        setTimeout(()=>callLED('off'),5000);
+      }
+
+      roi.delete();
+      resized.delete();
    }
   }
   ctx.font='14px system-ui';ctx.fillStyle='#fff';ctx.fillText(`Faces: ${facesCount}`,10,20);
