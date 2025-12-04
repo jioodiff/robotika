@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Object Detection — Accurate Mode</title>
+
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;}
+    html,body{margin:0;background:#071024;color:#e6eef6;
+      font-family:Inter,system-ui;}
+    body{padding:25px;display:flex;justify-content:center;}
+    .app{width:100%;max-width:1000px;}
+    .media{position:relative;border-radius:8px;overflow:hidden;background:#000;}
+    canvas{position:absolute;inset:0;pointer-events:none;}
+    button{background:#0001;border:1px solid #ffffff22;color:#fff;
+      padding:8px 12px;border-radius:8px;cursor:pointer;}
+    .log{font-size:14px;color:var(--muted);}
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <h2>Object Detection (Akurasi Tinggi)</h2>
+  <p class="log" id="status">Model sedang dimuat...</p>
+
+  <div class="media">
+    <video id="webcam" autoplay muted playsinline style="width:100%;display:none"></video>
+    <img id="inputImage" style="width:100%;display:none"/>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div style="margin-top:12px">
+    <button id="startCam">Start Webcam</button>
+    <button id="stopCam">Stop Webcam</button>
+    <label>
+      <button>Upload Image</button>
+      <input type="file" id="fileImage" accept="image/*" style="display:none">
+    </label>
+  </div>
+
+  <p class="log">Model: COCO-SSD (mobilenet_v2) — Akurasi lebih tinggi</p>
+</div>
+
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+
+<!-- COCO-SSD (accurate backbone: mobilenet_v2) -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+
+<script>
+let model = null;
+let stream = null;
+let loop = null;
+
+const video = document.getElementById("webcam");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+const inputImage = document.getElementById("inputImage");
+const status = document.getElementById("status");
+
+// =========================
+// 1. Load Accurate Model
+// =========================
+async function loadModel() {
+  status.textContent = "Memuat model (mobilenet_v2)...";
+
+  model = await cocoSsd.load({ base: "mobilenet_v2" });
+
+  status.textContent = "Model siap. Klik Start Webcam.";
+}
+loadModel();
+
+function resizeCanvas(w,h){
+  canvas.width = w;
+  canvas.height = h;
+}
+
+// =========================
+// 2. START CAMERA
+// =========================
+async function startWebcam() {
+  if (!model) {
+    status.textContent = "Model belum siap...";
+    return;
+  }
+
+  stream = await navigator.mediaDevices.getUserMedia({ video:true });
+  video.srcObject = stream;
+  video.style.display = "block";
+  inputImage.style.display = "none";
+
+  await video.play();
+
+  resizeCanvas(video.videoWidth, video.videoHeight);
+  status.textContent = "Webcam berjalan.";
+
+  startDetectionLoop();
+}
+
+function stopWebcam() {
+  if (stream) {
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
+  }
+  video.style.display = "none";
+  cancelAnimationFrame(loop);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  status.textContent = "Webcam dihentikan.";
+}
+
+document.getElementById("startCam").onclick = startWebcam;
+document.getElementById("stopCam").onclick = stopWebcam;
+
+// =============================================
+// 3. TEMPORAL SMOOTHING + NON-MAX SUPPRESSION
+// =============================================
+let lastBoxes = [];
+
+function smoothPredictions(preds) {
+  if (lastBoxes.length === 0) {
+    lastBoxes = preds;
+    return preds;
+  }
+
+  let blended = preds.map((p, i) => {
+    let prev = lastBoxes[i] || p;
+    return {
+      ...p,
+      bbox: [
+        prev.bbox[0]*0.4 + p.bbox[0]*0.6,
+        prev.bbox[1]*0.4 + p.bbox[1]*0.6,
+        prev.bbox[2]*0.4 + p.bbox[2]*0.6,
+        prev.bbox[3]*0.4 + p.bbox[3]*0.6,
+      ],
+      score: (prev.score + p.score)/2
+    };
+  });
+
+  lastBoxes = blended;
+  return blended;
+}
+
+function iou(a,b){
+  const x1 = Math.max(a[0], b[0]);
+  const y1 = Math.max(a[1], b[1]);
+  const x2 = Math.min(a[0]+a[2], b[0]+b[2]);
+  const y2 = Math.min(a[1]+a[3], b[1]+b[3]);
+
+  const inter = Math.max(0, x2-x1) * Math.max(0, y2-y1);
+  const areaA = a[2]*a[3], areaB = b[2]*b[3];
+  return inter / (areaA + areaB - inter);
+}
+
+function nonMaxSuppress(preds, thresh=0.4){
+  preds.sort((a,b)=>b.score - a.score);
+  let result = [];
+
+  preds.forEach(p=>{
+    let keep = true;
+    for (const r of result){
+      if (iou(p.bbox, r.bbox) > thresh){
+        keep = false;
+        break;
+      }
+    }
+    if (keep) result.push(p);
+  });
+
+  return result;
+}
+
+// ========================================
+// 4. DETECTION LOOP (more accurate & stable)
+// ========================================
+async function startDetectionLoop() {
+
+  async function detect() {
+    if (video.readyState >= 2) {
+      let predictions = await model.detect(video);
+
+      predictions = predictions.filter(p => p.score > 0.35);
+
+      predictions = smoothPredictions(predictions);
+
+      predictions = nonMaxSuppress(predictions);
+
+      draw(predictions);
+    }
+    loop = requestAnimationFrame(detect);
+  }
+
+  detect();
+}
+
+function draw(preds) {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  preds.forEach(p=>{
+    const [x,y,w,h] = p.bbox;
+
+    ctx.strokeStyle = "rgb(0,255,100)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x,y,w,h);
+
+    ctx.fillStyle = "rgb(0,255,100)";
+    ctx.font = "16px sans-serif";
+    ctx.fillText(`${p.class} ${(p.score*100).toFixed(1)}%`, x+4, y-4);
+  });
+}
+
+// =========================
+// 5. IMAGE UPLOAD
+// =========================
+document.getElementById("fileImage").onchange = e=>{
+  stopWebcam();
+  let f = e.target.files[0];
+  if (!f) return;
+
+  inputImage.src = URL.createObjectURL(f);
+  inputImage.style.display = "block";
+  video.style.display = "none";
+
+  inputImage.onload = async ()=>{
+    resizeCanvas(inputImage.width, inputImage.height);
+    status.textContent = "Mendeteksi objek...";
+
+    let preds = await model.detect(inputImage);
+    preds = nonMaxSuppress(preds);
+    draw(preds);
+
+    status.textContent = "Deteksi selesai.";
+  };
+};
+</script>
+
+</body>
+</html>
